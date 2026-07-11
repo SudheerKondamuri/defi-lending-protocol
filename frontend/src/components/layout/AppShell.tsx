@@ -3,9 +3,11 @@ import Header from './Header';
 
 interface AppShellProps {
   children: ReactNode;
+  currentPage: string;
+  onNavigate: (page: string) => void;
 }
 
-export default function AppShell({ children }: AppShellProps) {
+export default function AppShell({ children, currentPage, onNavigate }: AppShellProps) {
   return (
     <div className="relative min-h-screen bg-bg-1 overflow-x-hidden">
       {/* Background Decorative Gradient Blobs */}
@@ -37,7 +39,7 @@ export default function AppShell({ children }: AppShellProps) {
       </div>
 
       {/* Header */}
-      <Header />
+      <Header currentPage={currentPage} onNavigate={onNavigate} />
 
       {/* Main Content */}
       <main className="relative z-10 mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">

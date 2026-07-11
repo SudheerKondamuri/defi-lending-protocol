@@ -136,3 +136,24 @@ export function useRepay() {
 
   return { repay, hash, isPending, isConfirming, isSuccess, error, reset };
 }
+
+export function useLiquidate() {
+  const { writeContract, data: hash, isPending, error, reset } = useWriteContract();
+  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
+
+  const liquidate = (
+    user: `0x${string}`,
+    debtAsset: `0x${string}`,
+    collateralAsset: `0x${string}`,
+    debtToCover: string,
+    decimals: number = 18,
+  ) => {
+    writeContract({
+      ...lendingPoolConfig,
+      functionName: 'liquidate',
+      args: [user, debtAsset, collateralAsset, parseUnits(debtToCover, decimals)],
+    });
+  };
+
+  return { liquidate, hash, isPending, isConfirming, isSuccess, error, reset };
+}
