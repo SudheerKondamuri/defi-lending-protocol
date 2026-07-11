@@ -1,0 +1,9 @@
+# Compiler files
+cache/
+out/
+
+# Broadcasts (ignore local chain ID 31337 broadcasts)
+broadcast/*/31337/
+
+# Env files
+.env

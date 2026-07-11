@@ -1,0 +1,14 @@
+projectName: "DeFi Lending Protocol"
+author: "Kondamuri Satya Sudheer"
+version: "1.0.0"
+description: "A production-grade decentralized lending protocol with dynamic kinked interest rates, automated liquidations, Chainlink price validation, and a sleek glassmorphic dark-theme UI."
+contractDir: "./contracts"
+frontendDir: "./frontend"
+ports:
+  frontend: 5173
+  anvil: 8545
+commands:
+  buildContracts: "cd contracts && forge build"
+  testContracts: "cd contracts && forge test"
+  buildFrontend: "cd frontend && npm run build"
+  startLocalNetwork: "docker-compose up"
