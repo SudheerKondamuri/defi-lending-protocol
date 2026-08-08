@@ -228,6 +228,102 @@ export const ERC20_ABI = [
   },
 ] as const;
 
+export const ORACLE_ABI = [
+  {
+    name: 'getAssetPrice',
+    type: 'function',
+    stateMutability: 'view',
+    inputs: [{ name: 'asset', type: 'address' }],
+    outputs: [{ name: '', type: 'uint256' }],
+  },
+] as const;
+
+export const GOVERNANCE_TOKEN_ABI = [
+  ...ERC20_ABI,
+  {
+    name: 'delegate',
+    type: 'function',
+    stateMutability: 'nonpayable',
+    inputs: [{ name: 'delegatee', type: 'address' }],
+    outputs: [],
+  },
+  {
+    name: 'getVotes',
+    type: 'function',
+    stateMutability: 'view',
+    inputs: [{ name: 'account', type: 'address' }],
+    outputs: [{ name: '', type: 'uint256' }],
+  },
+] as const;
+
+export const GOVERNOR_ABI = [
+  {
+    name: 'propose',
+    type: 'function',
+    stateMutability: 'nonpayable',
+    inputs: [
+      { name: 'targets', type: 'address[]' },
+      { name: 'values', type: 'uint256[]' },
+      { name: 'calldatas', type: 'bytes[]' },
+      { name: 'description', type: 'string' },
+    ],
+    outputs: [{ name: 'proposalId', type: 'uint256' }],
+  },
+  {
+    name: 'castVote',
+    type: 'function',
+    stateMutability: 'nonpayable',
+    inputs: [
+      { name: 'proposalId', type: 'uint256' },
+      { name: 'support', type: 'uint8' },
+    ],
+    outputs: [{ name: 'weight', type: 'uint256' }],
+  },
+  {
+    name: 'state',
+    type: 'function',
+    stateMutability: 'view',
+    inputs: [{ name: 'proposalId', type: 'uint256' }],
+    outputs: [{ name: '', type: 'uint8' }],
+  },
+  {
+    name: 'proposalVotes',
+    type: 'function',
+    stateMutability: 'view',
+    inputs: [{ name: 'proposalId', type: 'uint256' }],
+    outputs: [
+      { name: 'againstVotes', type: 'uint256' },
+      { name: 'forVotes', type: 'uint256' },
+      { name: 'abstainVotes', type: 'uint256' },
+    ],
+  },
+  {
+    name: 'hasVoted',
+    type: 'function',
+    stateMutability: 'view',
+    inputs: [
+      { name: 'proposalId', type: 'uint256' },
+      { name: 'account', type: 'address' },
+    ],
+    outputs: [{ name: '', type: 'bool' }],
+  },
+  {
+    name: 'ProposalCreated',
+    type: 'event',
+    inputs: [
+      { name: 'proposalId', type: 'uint256', indexed: false },
+      { name: 'proposer', type: 'address', indexed: false },
+      { name: 'targets', type: 'address[]', indexed: false },
+      { name: 'values', type: 'uint256[]', indexed: false },
+      { name: 'signatures', type: 'string[]', indexed: false },
+      { name: 'calldatas', type: 'bytes[]', indexed: false },
+      { name: 'voteStart', type: 'uint256', indexed: false },
+      { name: 'voteEnd', type: 'uint256', indexed: false },
+      { name: 'description', type: 'string', indexed: false },
+    ],
+  },
+] as const;
+
 /** Contract addresses — sourced from env or hardcoded defaults */
 export const CONTRACTS = {
   lendingPool: (import.meta.env.VITE_LENDING_POOL_ADDRESS ??
@@ -236,4 +332,10 @@ export const CONTRACTS = {
     '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2') as `0x${string}`,
   usdc: (import.meta.env.VITE_USDC_ADDRESS ??
     '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48') as `0x${string}`,
+  governor: (import.meta.env.VITE_GOVERNOR_ADDRESS ??
+    '0x0000000000000000000000000000000000000001') as `0x${string}`,
+  govToken: (import.meta.env.VITE_GOV_TOKEN_ADDRESS ??
+    '0x0000000000000000000000000000000000000002') as `0x${string}`,
+  oracle: (import.meta.env.VITE_ORACLE_ADDRESS ??
+    '0x0000000000000000000000000000000000000003') as `0x${string}`,
 } as const;

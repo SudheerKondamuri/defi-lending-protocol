@@ -31,19 +31,17 @@ import {
   useWithdraw,
   useBorrow,
   useRepay,
+  useAssetData,
 } from '../hooks/useLendingPool';
 import { useTokenBalance, useTokenAllowance, useTokenApproval } from '../hooks/useTokenBalance';
 import { CONTRACTS } from '../config/abis';
 
-// ── Mock Asset Data (would come from contract in production) ──────────
 const ASSETS = [
   {
     symbol: 'WETH',
     name: 'Wrapped Ether',
     address: CONTRACTS.weth,
     decimals: 18,
-    depositAPY: 3.24,
-    borrowAPY: 5.67,
     color: '#627EEA',
   },
   {
@@ -51,11 +49,11 @@ const ASSETS = [
     name: 'USD Coin',
     address: CONTRACTS.usdc,
     decimals: 6,
-    depositAPY: 8.12,
-    borrowAPY: 12.45,
     color: '#2775CA',
   },
 ] as const;
+
+const BLOCKS_PER_YEAR = 2102400n;
 
 type TabId = 'deposit' | 'withdraw' | 'borrow' | 'repay';
 
@@ -119,6 +117,13 @@ export default function Dashboard() {
     address,
     CONTRACTS.lendingPool,
   );
+  
+  const { data: assetData } = useAssetData(selectedAsset.address);
+  const depositRatePerBlock = assetData?.[2] ?? 0n;
+  const borrowRatePerBlock = assetData?.[3] ?? 0n;
+  
+  const currentDepositAPY = Number((depositRatePerBlock * BLOCKS_PER_YEAR * 10000n) / 10n**18n) / 100;
+  const currentBorrowAPY = Number((borrowRatePerBlock * BLOCKS_PER_YEAR * 10000n) / 10n**18n) / 100;
 
   // ── Contract Writes ───────────────────────────────────────────────
   const depositHook = useDeposit();
@@ -471,7 +476,7 @@ export default function Dashboard() {
                 <div className="rounded-xl bg-bg-3 p-3 space-y-2">
                   <div className="flex justify-between text-xs">
                     <span className="text-text-muted">Borrow APY</span>
-                    <span className="text-text-primary font-medium">{selectedAsset.borrowAPY}%</span>
+                    <span className="text-text-primary font-medium">{currentBorrowAPY.toFixed(2)}%</span>
                   </div>
                   <div className="flex justify-between text-xs">
                     <span className="text-text-muted">Available to Borrow</span>
@@ -486,7 +491,7 @@ export default function Dashboard() {
                 <div className="rounded-xl bg-bg-3 p-3 space-y-2">
                   <div className="flex justify-between text-xs">
                     <span className="text-text-muted">Deposit APY</span>
-                    <span className="text-success font-medium">{selectedAsset.depositAPY}%</span>
+                    <span className="text-success font-medium">{currentDepositAPY.toFixed(2)}%</span>
                   </div>
                   <div className="flex justify-between text-xs">
                     <span className="text-text-muted">Wallet Balance</span>
@@ -563,6 +568,13 @@ interface AssetRowProps {
 function AssetRow({ asset, index, isSelected, onSelect, userAddress }: AssetRowProps) {
   const { data: collateral } = useUserCollateral(userAddress, asset.address);
   const { data: borrows } = useUserBorrows(userAddress, asset.address);
+  
+  const { data: assetData } = useAssetData(asset.address);
+  const depositRatePerBlock = assetData?.[2] ?? 0n;
+  const borrowRatePerBlock = assetData?.[3] ?? 0n;
+  
+  const depositAPY = Number((depositRatePerBlock * BLOCKS_PER_YEAR * 10000n) / 10n**18n) / 100;
+  const borrowAPY = Number((borrowRatePerBlock * BLOCKS_PER_YEAR * 10000n) / 10n**18n) / 100;
 
   return (
     <motion.button
@@ -595,13 +607,13 @@ function AssetRow({ asset, index, isSelected, onSelect, userAddress }: AssetRowP
       {/* Deposit APY */}
       <div className="text-right">
         <p className="text-xs text-text-muted sm:hidden">Deposit APY</p>
-        <p className="text-sm font-medium text-success">{asset.depositAPY}%</p>
+        <p className="text-sm font-medium text-success">{depositAPY.toFixed(2)}%</p>
       </div>
 
       {/* Borrow APY */}
       <div className="text-right">
         <p className="text-xs text-text-muted sm:hidden">Borrow APY</p>
-        <p className="text-sm font-medium text-warning">{asset.borrowAPY}%</p>
+        <p className="text-sm font-medium text-warning">{borrowAPY.toFixed(2)}%</p>
       </div>
 
       {/* Your Deposits */}

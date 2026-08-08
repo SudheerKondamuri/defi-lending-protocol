@@ -1,49 +1,25 @@
 import { useState } from 'react';
-import { Landmark, Award, Inbox, Vote, ThumbsUp, ThumbsDown } from 'lucide-react';
+import { Landmark, Award, Inbox, Vote, ThumbsUp, ThumbsDown, Loader2 } from 'lucide-react';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
-
-const MOCK_PROPOSALS = [
-  {
-    id: 1,
-    title: 'DIP-01: Increase USDC Liquidation Threshold to 85%',
-    description: 'Adjust risk parameters to improve borrowing power for stablecoin depositors.',
-    status: 'Active',
-    votesFor: 1294000,
-    votesAgainst: 284000,
-    endBlock: 18491024,
-  },
-  {
-    id: 2,
-    title: 'DIP-02: Deploy InterestRateModel V2 to Arbitrum',
-    description: 'Upgrade kink curve parameters to adjust utilization rates for Arbitrum deployment.',
-    status: 'Succeeded',
-    votesFor: 2500000,
-    votesAgainst: 130000,
-    endBlock: 18471200,
-  },
-];
+import { useGovernance, useGovernanceProposals } from '../hooks/useGovernance';
 
 export default function Governance() {
-  const [proposals, setProposals] = useState(MOCK_PROPOSALS);
-  const [selectedProposalId, setSelectedProposalId] = useState<number | null>(null);
-  const [votingPower] = useState(15000); // mock power
+  const { data: proposals, isLoading } = useGovernanceProposals();
+  const { votingPower, castVote, isVoting } = useGovernance();
+  const [selectedProposalId, setSelectedProposalId] = useState<string | null>(null);
 
-  const selectedProposal = proposals.find((p) => p.id === selectedProposalId);
+  const selectedProposal = proposals?.find((p) => p.id === selectedProposalId);
 
-  const handleVote = (support: boolean) => {
+  const handleVote = async (support: boolean) => {
     if (!selectedProposalId) return;
-    setProposals((prev) =>
-      prev.map((p) => {
-        if (p.id !== selectedProposalId) return p;
-        return {
-          ...p,
-          votesFor: support ? p.votesFor + votingPower : p.votesFor,
-          votesAgainst: !support ? p.votesAgainst + votingPower : p.votesAgainst,
-        };
-      })
-    );
-    alert('Vote cast successfully!');
+    try {
+      await castVote(selectedProposalId, support);
+      alert('Vote transaction submitted!');
+    } catch (error) {
+      console.error(error);
+      alert('Failed to cast vote.');
+    }
   };
 
   return (
@@ -87,7 +63,7 @@ export default function Governance() {
               Active Proposals
             </span>
             <div className="text-2xl font-black text-white font-mono mt-1">
-              {proposals.filter((p) => p.status === 'Active').length}
+              {proposals?.filter((p) => p.status === 'Active').length || 0}
             </div>
           </div>
           <Inbox className="h-8 w-8 text-success opacity-80" />
@@ -102,11 +78,21 @@ export default function Governance() {
             Governance Proposals
           </h3>
 
-          <div className="space-y-3">
-            {proposals.map((proposal) => {
-              const totalVotes = proposal.votesFor + proposal.votesAgainst || 1;
-              const forPct = Math.round((proposal.votesFor / totalVotes) * 100);
-              return (
+          {isLoading ? (
+            <div className="flex justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-brand" />
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {proposals?.length === 0 ? (
+                <div className="text-center py-8 text-text-muted text-sm">
+                  No proposals found.
+                </div>
+              ) : null}
+              {proposals?.map((proposal) => {
+                const totalVotes = proposal.votesFor + proposal.votesAgainst || 1;
+                const forPct = Math.round((proposal.votesFor / totalVotes) * 100);
+                return (
                 <div
                   key={proposal.id}
                   onClick={() => setSelectedProposalId(proposal.id)}
@@ -153,6 +139,7 @@ export default function Governance() {
               );
             })}
           </div>
+          )}
         </Card>
 
         {/* Voting Drawer Console */}
@@ -187,6 +174,7 @@ export default function Governance() {
                       onClick={() => handleVote(true)}
                       icon={<ThumbsUp className="h-4 w-4" />}
                       className="flex-1 min-h-[44px]"
+                      disabled={isVoting}
                     >
                       For
                     </Button>
@@ -196,6 +184,7 @@ export default function Governance() {
                       onClick={() => handleVote(false)}
                       icon={<ThumbsDown className="h-4 w-4" />}
                       className="flex-1 min-h-[44px]"
+                      disabled={isVoting}
                     >
                       Against
                     </Button>

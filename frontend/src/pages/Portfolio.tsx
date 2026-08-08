@@ -6,13 +6,7 @@ import Card from '../components/ui/Card';
 import StatCard from '../components/ui/StatCard';
 import HealthFactorDisplay from '../components/ui/HealthFactorDisplay';
 import { useUserAccountData, useUserHealthFactor } from '../hooks/useLendingPool';
-
-// Mock Transaction History
-const MOCK_HISTORY = [
-  { type: 'Deposit', asset: 'WETH', amount: '1.5000', tx: '0x3a2f…4b9e', date: 'Jul 11, 2026 14:02' },
-  { type: 'Borrow', asset: 'USDC', amount: '1,200.00', tx: '0x8f7d…2e1c', date: 'Jul 11, 2026 14:15' },
-  { type: 'Repay', asset: 'USDC', amount: '200.00', tx: '0xde5c…9a8b', date: 'Jul 11, 2026 14:30' },
-];
+import { useUserActivityLogs } from '../hooks/useUserActivityLogs';
 
 function formatUSD(value: bigint | undefined): string {
   if (value === undefined) return '$0.00';
@@ -25,8 +19,9 @@ function formatUSD(value: bigint | undefined): string {
 
 export default function Portfolio() {
   const { address } = useAccount();
-  const { data: accountData, isLoading } = useUserAccountData(address);
+  const { data: accountData, isLoading: accountLoading } = useUserAccountData(address);
   const { data: healthFactor } = useUserHealthFactor(address);
+  const { logs, isLoading: logsLoading } = useUserActivityLogs(address);
 
   // Collateral vs Borrow limit percent
   const utilizationPct = useMemo(() => {
@@ -37,7 +32,7 @@ export default function Portfolio() {
     return Math.min(100, Math.round((debtVal / (collateralVal * 0.8)) * 100)); // threshold approx 80%
   }, [accountData]);
 
-  if (isLoading) {
+  if (accountLoading) {
     return (
       <div className="space-y-6">
         <div className="h-8 w-48 bg-bg-4 animate-pulse rounded" />
@@ -182,28 +177,54 @@ export default function Portfolio() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border-subtle">
-              {MOCK_HISTORY.map((log, idx) => (
-                <tr key={idx} className="text-xs">
-                  <td className="py-3">
-                    <span
-                      className={`inline-flex px-2 py-0.5 rounded text-[10px] font-bold ${
-                        log.type === 'Deposit' || log.type === 'Repay'
-                          ? 'bg-success/15 text-success'
-                          : 'bg-error/15 text-error'
-                      }`}
-                    >
-                      {log.type}
-                    </span>
+              {logsLoading ? (
+                <tr>
+                  <td colSpan={5} className="py-4 text-center text-text-muted text-xs">
+                    Loading logs...
                   </td>
-                  <td className="py-3 text-text-primary font-semibold">{log.asset}</td>
-                  <td className="py-3 font-mono font-bold text-text-secondary">{log.amount}</td>
-                  <td className="py-3 font-mono text-brand-light hover:underline cursor-pointer flex items-center gap-1">
-                    {log.tx}
-                    <ExternalLink className="h-3 w-3" />
-                  </td>
-                  <td className="py-3 text-right text-text-muted font-mono">{log.date}</td>
                 </tr>
-              ))}
+              ) : logs.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="py-4 text-center text-text-muted text-xs">
+                    No recent activity found.
+                  </td>
+                </tr>
+              ) : (
+                logs.map((log, idx) => (
+                  <tr key={idx} className="text-xs hover:bg-white/5 transition-colors">
+                    <td className="py-3">
+                      <span
+                        className={`inline-flex px-2 py-0.5 rounded text-[10px] font-bold ${
+                          log.type === 'Deposit' || log.type === 'Repay'
+                            ? 'bg-success/15 text-success'
+                            : 'bg-error/15 text-error'
+                        }`}
+                      >
+                        {log.type}
+                      </span>
+                    </td>
+                    <td className="py-3 text-text-primary font-semibold">{log.asset}</td>
+                    <td className="py-3 font-mono font-bold text-text-secondary">{log.amount}</td>
+                    <td className="py-3 font-mono text-brand-light">
+                      <a 
+                        href={`https://etherscan.io/tx/${log.tx}`}
+                        target="_blank" 
+                        rel="noreferrer"
+                        className="hover:underline cursor-pointer flex items-center gap-1"
+                      >
+                        {log.tx.substring(0, 6)}...{log.tx.substring(log.tx.length - 4)}
+                        <ExternalLink className="h-3 w-3" />
+                      </a>
+                    </td>
+                    <td className="py-3 text-right text-text-muted font-mono">
+                      {new Date(log.timestamp).toLocaleString(undefined, { 
+                        month: 'short', day: 'numeric', year: 'numeric', 
+                        hour: '2-digit', minute: '2-digit' 
+                      })}
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

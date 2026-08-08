@@ -1,31 +1,54 @@
+import { useMemo } from 'react';
+import { useReadContracts } from 'wagmi';
 import { ShieldCheck, Activity, Network, Heart } from 'lucide-react';
 import Card from '../components/ui/Card';
 import { AreaChart, RateCurveChart, BarChart } from '../components/ui/Charts';
-
-// Mock TVL Data over time
-const TVL_DATA = [
-  { label: 'Jul 5', value: 42.5 },
-  { label: 'Jul 6', value: 43.1 },
-  { label: 'Jul 7', value: 44.8 },
-  { label: 'Jul 8', value: 45.2 },
-  { label: 'Jul 9', value: 46.9 },
-  { label: 'Jul 10', value: 47.5 },
-  { label: 'Jul 11', value: 48.2 },
-];
-
-const RESERVE_BARS = [
-  { label: 'WETH Collateral', value: 31000000 },
-  { label: 'USDC Collateral', value: 17294015 },
-  { label: 'WETH Borrows', value: 11000000 },
-  { label: 'USDC Borrows', value: 10402192 },
-];
-
-const ORACLE_FEEDS = [
-  { asset: 'WETH / USD', source: 'Chainlink Feed', price: '$2,000.00', heartbeat: '1h', status: 'Healthy', block: 18491020 },
-  { asset: 'USDC / USD', source: 'Chainlink Feed', price: '$1.00', heartbeat: '24h', status: 'Healthy', block: 18491024 },
-];
+import { CONTRACTS, LENDING_POOL_ABI, ORACLE_ABI } from '../config/abis';
 
 export default function Analytics() {
+  const { data } = useReadContracts({
+    contracts: [
+      { address: CONTRACTS.lendingPool, abi: LENDING_POOL_ABI, functionName: 'getAssetData', args: [CONTRACTS.weth] },
+      { address: CONTRACTS.lendingPool, abi: LENDING_POOL_ABI, functionName: 'getAssetData', args: [CONTRACTS.usdc] },
+      { address: CONTRACTS.oracle, abi: ORACLE_ABI, functionName: 'getAssetPrice', args: [CONTRACTS.weth] },
+      { address: CONTRACTS.oracle, abi: ORACLE_ABI, functionName: 'getAssetPrice', args: [CONTRACTS.usdc] },
+    ],
+  });
+
+  const [wethData, usdcData, wethPriceRes, usdcPriceRes] = data || [];
+
+  const wethPrice = Number(wethPriceRes?.result ?? 0n) / 1e18;
+  const usdcPrice = Number(usdcPriceRes?.result ?? 0n) / 1e18;
+
+  const wethDeposits = Number(wethData?.result?.[0] ?? 0n) / 1e18;
+  const usdcDeposits = Number(usdcData?.result?.[0] ?? 0n) / 1e6;
+  const wethBorrows = Number(wethData?.result?.[1] ?? 0n) / 1e18;
+  const usdcBorrows = Number(usdcData?.result?.[1] ?? 0n) / 1e6;
+
+  const wethDepositUsd = wethDeposits * wethPrice;
+  const usdcDepositUsd = usdcDeposits * usdcPrice;
+  const wethBorrowUsd = wethBorrows * wethPrice;
+  const usdcBorrowUsd = usdcBorrows * usdcPrice;
+
+  const totalTvlUsd = wethDepositUsd + usdcDepositUsd;
+
+  // Since we don't have historical on-chain TVL, we create a flat line of the current TVL for the chart
+  const TVL_DATA = useMemo(() => [
+    { label: 'Past', value: totalTvlUsd / 1e6 },
+    { label: 'Current', value: totalTvlUsd / 1e6 },
+  ], [totalTvlUsd]);
+
+  const RESERVE_BARS = useMemo(() => [
+    { label: 'WETH Collateral', value: wethDepositUsd },
+    { label: 'USDC Collateral', value: usdcDepositUsd },
+    { label: 'WETH Borrows', value: wethBorrowUsd },
+    { label: 'USDC Borrows', value: usdcBorrowUsd },
+  ], [wethDepositUsd, usdcDepositUsd, wethBorrowUsd, usdcBorrowUsd]);
+
+  const ORACLE_FEEDS = useMemo(() => [
+    { asset: 'WETH / USD', source: 'Chainlink Feed', price: `$${wethPrice.toFixed(2)}`, heartbeat: '1h', status: 'Healthy', block: 'Live' },
+    { asset: 'USDC / USD', source: 'Chainlink Feed', price: `$${usdcPrice.toFixed(2)}`, heartbeat: '24h', status: 'Healthy', block: 'Live' },
+  ], [wethPrice, usdcPrice]);
   return (
     <div className="space-y-8">
       <div>

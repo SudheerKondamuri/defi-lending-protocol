@@ -151,23 +151,6 @@ export default function Landing({ onEnterApp }: LandingProps) {
         </div>
       </section>
 
-      {/* Security Audits */}
-      <section className="glass-card p-8 border border-border-subtle bg-bg-2/10 flex flex-col md:flex-row items-center justify-between gap-6 max-w-4xl mx-auto">
-        <div className="space-y-2">
-          <div className="inline-flex items-center gap-1 text-[10px] uppercase font-bold text-success bg-success/10 px-2 py-0.5 rounded">
-            Audit Passed
-          </div>
-          <h3 className="text-xl font-bold text-white">Secure Smart Contracts</h3>
-          <p className="text-xs text-text-secondary max-w-md">
-            All code in the core vaults is audited, verified, and locked under a 24-hour timelock delay.
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-4 items-center justify-center grayscale opacity-60">
-          <div className="font-bold text-white font-mono text-sm tracking-wider">OPENZEPPELIN</div>
-          <div className="font-bold text-white font-mono text-sm tracking-wider">CERTIK</div>
-          <div className="font-bold text-white font-mono text-sm tracking-wider">TRAIL OF BITS</div>
-        </div>
-      </section>
 
       {/* FAQ Accordion */}
       <section className="max-w-2xl mx-auto space-y-6">

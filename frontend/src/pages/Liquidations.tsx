@@ -4,63 +4,24 @@ import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import { useLiquidate } from '../hooks/useLendingPool';
-import { CONTRACTS } from '../config/abis';
-
-// Mock list of active borrows on the platform
-const MOCK_ACCOUNTS = [
-  {
-    address: '0x3a7e2A83210FD2cf9a58D64a0E144C3A3C0898cb' as `0x${string}`,
-    collateralAsset: 'WETH',
-    collateralAddress: CONTRACTS.weth,
-    collateralValue: 4500.0,
-    debtAsset: 'USDC',
-    debtAddress: CONTRACTS.usdc,
-    debtValue: 3950.0,
-    healthFactor: 0.91,
-    maxDebtToCover: '1975.0',
-    decimals: 6,
-  },
-  {
-    address: '0x9dE24b2185a5382029B8544c2193b04c86e0821c' as `0x${string}`,
-    collateralAsset: 'USDC',
-    collateralAddress: CONTRACTS.usdc,
-    collateralValue: 12000.0,
-    debtAsset: 'WETH',
-    debtAddress: CONTRACTS.weth,
-    debtValue: 10800.0,
-    healthFactor: 0.89,
-    maxDebtToCover: '2.7', // 2.7 WETH (~5400 USD)
-    decimals: 18,
-  },
-  {
-    address: '0x7b58DA8cb921C2B0192e212C3fE21C9a32cf185d' as `0x${string}`,
-    collateralAsset: 'WETH',
-    collateralAddress: CONTRACTS.weth,
-    collateralValue: 8000.0,
-    debtAsset: 'USDC',
-    debtAddress: CONTRACTS.usdc,
-    debtValue: 5100.0,
-    healthFactor: 1.25,
-    maxDebtToCover: '0.00',
-    decimals: 6,
-  },
-];
+import { useLiquidatableAccounts, BorrowerAccount } from '../hooks/useLiquidatableAccounts';
 
 export default function Liquidations() {
   const [search, setSearch] = useState('');
-  const [selectedUser, setSelectedUser] = useState<typeof MOCK_ACCOUNTS[0] | null>(null);
+  const [selectedUser, setSelectedUser] = useState<BorrowerAccount | null>(null);
   const [coverAmount, setCoverAmount] = useState('');
 
   const liquidationHook = useLiquidate();
+  const { accounts, isLoading } = useLiquidatableAccounts();
 
   const filteredAccounts = useMemo(() => {
-    return MOCK_ACCOUNTS.filter((acc) => {
+    return accounts.filter((acc) => {
       const matchSearch = acc.address.toLowerCase().includes(search.toLowerCase());
       return matchSearch;
     });
-  }, [search]);
+  }, [search, accounts]);
 
-  const handleSelect = (user: typeof MOCK_ACCOUNTS[0]) => {
+  const handleSelect = (user: BorrowerAccount) => {
     setSelectedUser(user);
     setCoverAmount(user.maxDebtToCover);
   };
@@ -132,47 +93,61 @@ export default function Liquidations() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border-subtle">
-                {filteredAccounts.map((acc, idx) => {
-                  const isLiquidatable = acc.healthFactor < 1.0;
-                  return (
-                    <tr key={idx} className="text-xs">
-                      <td className="py-3 font-mono text-text-secondary">
-                        {acc.address.slice(0, 6)}…{acc.address.slice(-4)}
-                      </td>
-                      <td className="py-3 text-text-primary font-semibold">
-                        ${acc.collateralValue.toLocaleString()} ({acc.collateralAsset})
-                      </td>
-                      <td className="py-3 text-text-primary font-semibold">
-                        ${acc.debtValue.toLocaleString()} ({acc.debtAsset})
-                      </td>
-                      <td className="py-3">
-                        <span
-                          className={`font-mono font-bold ${
-                            isLiquidatable ? 'text-error' : 'text-success'
-                          }`}
-                        >
-                          {acc.healthFactor.toFixed(2)}
-                        </span>
-                      </td>
-                      <td className="py-3 text-right">
-                        {isLiquidatable ? (
-                          <Button
-                            variant="danger"
-                            size="sm"
-                            onClick={() => handleSelect(acc)}
-                            className="min-h-[32px] px-2.5 font-bold"
+                {isLoading ? (
+                  <tr>
+                    <td colSpan={5} className="py-8 text-center text-text-muted text-xs">
+                      Scanning chain for borrower accounts...
+                    </td>
+                  </tr>
+                ) : filteredAccounts.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="py-8 text-center text-text-muted text-xs">
+                      No active borrower accounts found.
+                    </td>
+                  </tr>
+                ) : (
+                  filteredAccounts.map((acc, idx) => {
+                    const isLiquidatable = acc.healthFactor > 0 && acc.healthFactor < 1.0;
+                    return (
+                      <tr key={idx} className="text-xs hover:bg-white/5 transition-colors">
+                        <td className="py-3 font-mono text-text-secondary">
+                          {acc.address.slice(0, 6)}…{acc.address.slice(-4)}
+                        </td>
+                        <td className="py-3 text-text-primary font-semibold">
+                          {acc.collateralValue.toLocaleString(undefined, { maximumFractionDigits: 4 })} ({acc.collateralAsset})
+                        </td>
+                        <td className="py-3 text-text-primary font-semibold">
+                          {acc.debtValue.toLocaleString(undefined, { maximumFractionDigits: 4 })} ({acc.debtAsset})
+                        </td>
+                        <td className="py-3">
+                          <span
+                            className={`font-mono font-bold ${
+                              isLiquidatable ? 'text-error' : 'text-success'
+                            }`}
                           >
-                            Liquidate
-                          </Button>
-                        ) : (
-                          <span className="text-[10px] font-bold text-success bg-success/10 px-2 py-1 rounded">
-                            Healthy
+                            {acc.healthFactor > 1000 ? '∞' : acc.healthFactor.toFixed(2)}
                           </span>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
+                        </td>
+                        <td className="py-3 text-right">
+                          {isLiquidatable ? (
+                            <Button
+                              variant="danger"
+                              size="sm"
+                              onClick={() => handleSelect(acc)}
+                              className="min-h-[32px] px-2.5 font-bold"
+                            >
+                              Liquidate
+                            </Button>
+                          ) : (
+                            <span className="text-[10px] font-bold text-success bg-success/10 px-2 py-1 rounded">
+                              Healthy
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
               </tbody>
             </table>
           </div>
