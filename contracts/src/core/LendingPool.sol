@@ -321,6 +321,35 @@ contract LendingPool is Initializable, UUPSUpgradeable, OwnableUpgradeable, Reen
         return supportedAssets.length;
     }
 
+    /// @notice Returns detailed asset data including current rates.
+    function getAssetData(address asset) external view returns (
+        uint256 totalDeposits,
+        uint256 totalBorrows,
+        uint256 depositRate,
+        uint256 borrowRate,
+        bool isActive
+    ) {
+        AssetData memory data = assetData[asset];
+        AssetConfig memory config = assetConfigs[asset];
+        
+        totalDeposits = data.totalDeposits;
+        totalBorrows = data.totalBorrows;
+        isActive = config.isActive;
+
+        uint256 totalLiquidity = IERC20(asset).balanceOf(address(this));
+        
+        if (data.totalBorrows == 0) {
+            borrowRate = interestRateModel.getBorrowRate(totalLiquidity, 0, data.totalReserves);
+            depositRate = 0;
+        } else {
+            borrowRate = interestRateModel.getBorrowRate(totalLiquidity, data.totalBorrows, data.totalReserves);
+            // depositRate = borrowRate * utilizationRate * (1 - reserveFactor)
+            uint256 utilizationRate = (data.totalBorrows * WAD) / (totalLiquidity + data.totalBorrows);
+            uint256 rateToPool = (borrowRate * utilizationRate) / WAD;
+            depositRate = (rateToPool * (WAD - config.reserveFactor)) / WAD;
+        }
+    }
+
     /// @notice Returns the current debt of a user for a specific asset.
     /// @param user The user address.
     /// @param asset The asset address.
