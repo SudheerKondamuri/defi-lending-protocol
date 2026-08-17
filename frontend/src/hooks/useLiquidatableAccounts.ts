@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { usePublicClient } from 'wagmi';
 import { parseAbiItem, formatUnits } from 'viem';
 import { CONTRACTS, LENDING_POOL_ABI } from '../config/abis';
@@ -14,126 +14,157 @@ export interface BorrowerAccount {
   healthFactor: number;
   maxDebtToCover: string;
   decimals: number;
+  bonusPct: number;
 }
 
 export function useLiquidatableAccounts() {
   const publicClient = usePublicClient();
   const [accounts, setAccounts] = useState<BorrowerAccount[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isError, setIsError] = useState(false);
 
-  useEffect(() => {
+  const fetchAccounts = useCallback(async () => {
     if (!publicClient) return;
+    setIsLoading(true);
+    setIsError(false);
 
-    async function fetchAccounts() {
-      setIsLoading(true);
-      try {
-        // 1. Find all users who ever borrowed
-        const borrowLogs = await publicClient!.getLogs({
+    try {
+      // Fetch asset configs for liquidation bonus
+      const [wethConfig, usdcConfig] = await Promise.all([
+        publicClient.readContract({
           address: CONTRACTS.lendingPool,
-          event: parseAbiItem('event Borrow(address indexed user, address indexed asset, uint256 amount)'),
-          fromBlock: 'earliest',
-        });
+          abi: LENDING_POOL_ABI,
+          functionName: 'assetConfigs',
+          args: [CONTRACTS.weth],
+        }) as unknown as Promise<[bigint, bigint, bigint, number, boolean]>,
+        publicClient.readContract({
+          address: CONTRACTS.lendingPool,
+          abi: LENDING_POOL_ABI,
+          functionName: 'assetConfigs',
+          args: [CONTRACTS.usdc],
+        }) as unknown as Promise<[bigint, bigint, bigint, number, boolean]>,
+      ]);
 
-        const uniqueUsers = Array.from(new Set(borrowLogs.map((log) => log.args.user as `0x${string}`)));
+      const wethBonus = parseFloat(formatUnits(wethConfig[1] ?? 50000000000000000n, 18)) * 100;
+      const usdcBonus = parseFloat(formatUnits(usdcConfig[1] ?? 50000000000000000n, 18)) * 100;
 
-        const results: BorrowerAccount[] = [];
+      // 1. Find all users who ever borrowed
+      const borrowLogs = await publicClient.getLogs({
+        address: CONTRACTS.lendingPool,
+        event: parseAbiItem('event Borrow(address indexed user, address indexed asset, uint256 amount)'),
+        fromBlock: 'earliest',
+      });
 
-        // 2. Fetch data for each user
-        for (const user of uniqueUsers) {
-          if (!user) continue;
+      const uniqueUsers = Array.from(
+        new Set(
+          borrowLogs
+            .map((log) => log.args.user as `0x${string}` | undefined)
+            .filter((user): user is `0x${string}` => !!user),
+        ),
+      );
 
-          // Fetch account data
-          const accountData = await publicClient!.readContract({
-            address: CONTRACTS.lendingPool,
-            abi: LENDING_POOL_ABI,
-            functionName: 'getUserAccountData',
-            args: [user],
-          }) as [bigint, bigint, bigint, bigint, bigint, bigint];
+      // 2. Fetch data in parallel for all users
+      const results = await Promise.all(
+        uniqueUsers.map(async (user): Promise<BorrowerAccount | null> => {
+          try {
+            const [accountData, wethPositions, usdcPositions, wethDebt, usdcDebt] = await Promise.all([
+              publicClient.readContract({
+                address: CONTRACTS.lendingPool,
+                abi: LENDING_POOL_ABI,
+                functionName: 'getUserAccountData',
+                args: [user],
+              }) as Promise<readonly [bigint, bigint, bigint, bigint]>,
+              publicClient.readContract({
+                address: CONTRACTS.lendingPool,
+                abi: LENDING_POOL_ABI,
+                functionName: 'userPositions',
+                args: [user, CONTRACTS.weth],
+              }) as Promise<[bigint, bigint, bigint]>,
+              publicClient.readContract({
+                address: CONTRACTS.lendingPool,
+                abi: LENDING_POOL_ABI,
+                functionName: 'userPositions',
+                args: [user, CONTRACTS.usdc],
+              }) as Promise<[bigint, bigint, bigint]>,
+              publicClient.readContract({
+                address: CONTRACTS.lendingPool,
+                abi: LENDING_POOL_ABI,
+                functionName: 'getUserDebt',
+                args: [user, CONTRACTS.weth],
+              }) as Promise<bigint>,
+              publicClient.readContract({
+                address: CONTRACTS.lendingPool,
+                abi: LENDING_POOL_ABI,
+                functionName: 'getUserDebt',
+                args: [user, CONTRACTS.usdc],
+              }) as Promise<bigint>,
+            ]);
 
-          const healthFactor = Number(accountData[5]) / 1e18;
+            const healthFactor = Number(accountData[3]) / 1e18;
+            const wethCollateral = wethPositions[0];
+            const usdcCollateral = usdcPositions[0];
 
-          // Fetch specific balances to guess primary collateral/debt
-          const wethCollateral = await publicClient!.readContract({
-            address: CONTRACTS.lendingPool,
-            abi: LENDING_POOL_ABI,
-            functionName: 'getUserCollateral',
-            args: [user, CONTRACTS.weth],
-          }) as bigint;
+            // Primary collateral asset
+            let colAsset = 'WETH';
+            let colAddress = CONTRACTS.weth;
+            let colVal = parseFloat(formatUnits(wethCollateral, 18));
+            if (usdcCollateral > wethCollateral) {
+              colAsset = 'USDC';
+              colAddress = CONTRACTS.usdc;
+              colVal = parseFloat(formatUnits(usdcCollateral, 6));
+            }
 
-          const usdcBorrows = await publicClient!.readContract({
-            address: CONTRACTS.lendingPool,
-            abi: LENDING_POOL_ABI,
-            functionName: 'getUserBorrows',
-            args: [user, CONTRACTS.usdc],
-          }) as bigint;
-          
-          const wethBorrows = await publicClient!.readContract({
-            address: CONTRACTS.lendingPool,
-            abi: LENDING_POOL_ABI,
-            functionName: 'getUserBorrows',
-            args: [user, CONTRACTS.weth],
-          }) as bigint;
+            // Primary debt asset
+            let debtAsset = 'USDC';
+            let debtAddress = CONTRACTS.usdc;
+            let debtDecimals = 6;
+            let rawDebt = usdcDebt;
+            if (wethDebt > usdcDebt) {
+              debtAsset = 'WETH';
+              debtAddress = CONTRACTS.weth;
+              debtDecimals = 18;
+              rawDebt = wethDebt;
+            }
 
-          const usdcCollateral = await publicClient!.readContract({
-            address: CONTRACTS.lendingPool,
-            abi: LENDING_POOL_ABI,
-            functionName: 'getUserCollateral',
-            args: [user, CONTRACTS.usdc],
-          }) as bigint;
+            const debtVal = parseFloat(formatUnits(rawDebt, debtDecimals));
+            const maxCover = rawDebt / 2n;
 
-          // Determine primary collateral and debt for UI
-          let colAsset = 'WETH';
-          let colAddress = CONTRACTS.weth;
-          let colVal = parseFloat(formatUnits(wethCollateral, 18));
-          if (usdcCollateral > wethCollateral) {
-            colAsset = 'USDC';
-            colAddress = CONTRACTS.usdc;
-            colVal = parseFloat(formatUnits(usdcCollateral, 6));
+            const bonusPct = colAsset === 'WETH' ? wethBonus : usdcBonus;
+
+            return {
+              address: user,
+              collateralAsset: colAsset,
+              collateralAddress: colAddress,
+              collateralValue: colVal,
+              debtAsset: debtAsset,
+              debtAddress: debtAddress,
+              debtValue: debtVal,
+              healthFactor: healthFactor,
+              maxDebtToCover: formatUnits(maxCover, debtDecimals),
+              decimals: debtDecimals,
+              bonusPct: bonusPct,
+            };
+          } catch (e) {
+            console.warn(`Could not read borrower state for ${user}:`, e);
+            return null;
           }
+        }),
+      );
 
-          let debtAsset = 'USDC';
-          let debtAddress = CONTRACTS.usdc;
-          let debtDecimals = 6;
-          let rawDebt = usdcBorrows;
-          if (wethBorrows > usdcBorrows) {
-            debtAsset = 'WETH';
-            debtAddress = CONTRACTS.weth;
-            debtDecimals = 18;
-            rawDebt = wethBorrows;
-          }
-          
-          let debtVal = parseFloat(formatUnits(rawDebt, debtDecimals));
-
-          // Max debt to cover is 50% of the debt
-          const maxCover = rawDebt / 2n;
-
-          results.push({
-            address: user,
-            collateralAsset: colAsset,
-            collateralAddress: colAddress,
-            collateralValue: colVal, // in native units for simplicity, or we could fetch price.
-            debtAsset: debtAsset,
-            debtAddress: debtAddress,
-            debtValue: debtVal,
-            healthFactor: healthFactor,
-            maxDebtToCover: formatUnits(maxCover, debtDecimals),
-            decimals: debtDecimals,
-          });
-        }
-
-        setAccounts(results);
-      } catch (error) {
-        console.error('Failed to fetch liquidatable accounts:', error);
-      } finally {
-        setIsLoading(false);
-      }
+      setAccounts(results.filter((a): a is BorrowerAccount => a !== null));
+    } catch (error) {
+      console.error('Failed to fetch liquidatable accounts:', error);
+      setIsError(true);
+    } finally {
+      setIsLoading(false);
     }
-
-    fetchAccounts();
-    // Re-run periodically or rely on mount
-    const interval = setInterval(fetchAccounts, 15000);
-    return () => clearInterval(interval);
   }, [publicClient]);
 
-  return { accounts, isLoading };
+  useEffect(() => {
+    fetchAccounts();
+    const interval = setInterval(fetchAccounts, 20000);
+    return () => clearInterval(interval);
+  }, [fetchAccounts]);
+
+  return { accounts, isLoading, isError, refetch: fetchAccounts };
 }
