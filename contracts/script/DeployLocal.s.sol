@@ -10,9 +10,11 @@ import {LendingPool} from "../src/core/LendingPool.sol";
 import {ILendingPool} from "../src/interfaces/ILendingPool.sol";
 import {MockERC20} from "../src/mocks/MockERC20.sol";
 import {MockChainlinkAggregator} from "../src/mocks/MockChainlinkAggregator.sol";
+import {GovernanceToken} from "../src/core/GovernanceToken.sol";
+import {ProtocolGovernor} from "../src/core/ProtocolGovernor.sol";
 
 /// @title DeployLocal
-/// @notice Deploy script for local Anvil network, deploying mock tokens and price feeds.
+/// @notice Deploy script for local Anvil network, deploying mock tokens, price feeds, and governance.
 contract DeployLocal is Script {
     uint256 constant BLOCKS_PER_YEAR = 2_102_400;
 
@@ -49,7 +51,7 @@ contract DeployLocal is Script {
         PriceOracleRegistry oracleRegistry = new PriceOracleRegistry(deployer);
         console.log("PriceOracleRegistry deployed at:", address(oracleRegistry));
 
-        // Set feeds with generous heartbeat for local testing
+        // Set feeds with generous heartbeat for local testing (1 year)
         oracleRegistry.setPriceFeed(address(weth), address(ethFeed), 31536000);
         oracleRegistry.setPriceFeed(address(usdc), address(usdcFeed), 31536000);
 
@@ -94,12 +96,43 @@ contract DeployLocal is Script {
         pool.deposit(address(usdc), 100_000e6);
         console.log("Seeded initial pool liquidity (50 WETH, 100,000 USDC)");
 
+        // 8. Deploy Governance Token & Governor
+        GovernanceToken govToken = new GovernanceToken(10_000_000e18, deployer);
+        ProtocolGovernor governor = new ProtocolGovernor(govToken);
+        console.log("GovernanceToken deployed at:", address(govToken));
+        console.log("ProtocolGovernor deployed at:", address(governor));
+
         // Mint mock tokens to standard test account (Alice) for testing
         // Alice on Anvil is: 0x70997970C51812dc3A010C7d01b50e0d17dc79C8
         address alice = 0x70997970C51812dc3A010C7d01b50e0d17dc79C8;
         weth.mint(alice, 100e18);
         usdc.mint(alice, 100_000e6);
-        console.log("Minted mock WETH and USDC to Alice");
+        govToken.transfer(alice, 100_000e18);
+        govToken.delegate(deployer);
+        console.log("Minted mock WETH, USDC, and PRT to Alice");
+
+        // Seed sample proposals
+        address[] memory targets = new address[](1);
+        targets[0] = address(pool);
+        uint256[] memory values = new uint256[](1);
+        values[0] = 0;
+        bytes[] memory calldatas = new bytes[](1);
+        calldatas[0] = "";
+
+        governor.propose(
+            targets,
+            values,
+            calldatas,
+            "PIP-1: Upgrade WETH Liquidation Threshold to 88%\nIncrease capital efficiency for ETH collateral while maintaining safety margins."
+        );
+
+        governor.propose(
+            targets,
+            values,
+            calldatas,
+            "PIP-2: Onboard LINK as Collateral Asset\nAdd Chainlink LINK market with 75% LTV and 80% liquidation threshold."
+        );
+        console.log("Created sample DAO governance proposals (PIP-1, PIP-2)");
 
         vm.stopBroadcast();
         console.log("Deployment complete!");
