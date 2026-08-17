@@ -311,6 +311,50 @@ contract LendingPool is Initializable, UUPSUpgradeable, OwnableUpgradeable, Reen
     /*                          View Functions                            */
     /* ------------------------------------------------------------------ */
 
+    /// @notice Returns comprehensive data about a user's account.
+    /// @param user The address of the user.
+    function getUserAccountData(address user) external view returns (
+        uint256 totalCollateralValue,
+        uint256 totalBorrowValue,
+        uint256 availableBorrowValue,
+        uint256 healthFactor
+    ) {
+        uint256 totalBorrowPower = 0;
+
+        uint256 length = supportedAssets.length;
+        for (uint256 i = 0; i < length;) {
+            address asset = supportedAssets[i];
+            AssetConfig storage config = assetConfigs[asset];
+            UserPosition storage position = userPositions[user][asset];
+
+            if (position.collateralBalance > 0) {
+                uint256 price = oracle.getAssetPrice(asset);
+                uint256 collateralUSD = (position.collateralBalance * price) / (10 ** config.decimals);
+                totalCollateralValue += collateralUSD;
+                totalBorrowPower += (collateralUSD * config.liquidationThreshold) / WAD;
+            }
+
+            uint256 userDebt = _getUserDebt(user, asset);
+            if (userDebt > 0) {
+                uint256 price = oracle.getAssetPrice(asset);
+                uint256 debtUSD = (userDebt * price) / (10 ** config.decimals);
+                totalBorrowValue += debtUSD;
+            }
+
+            unchecked {
+                ++i;
+            }
+        }
+
+        if (totalBorrowPower > totalBorrowValue) {
+            availableBorrowValue = totalBorrowPower - totalBorrowValue;
+        } else {
+            availableBorrowValue = 0;
+        }
+
+        healthFactor = _calculateHealthFactor(user);
+    }
+
     /// @inheritdoc ILendingPool
     function getUserHealthFactor(address user) external view returns (uint256) {
         return _calculateHealthFactor(user);
