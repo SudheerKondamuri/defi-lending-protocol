@@ -15,9 +15,9 @@ interface InputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'size'>
 }
 
 const sizeStyles = {
-  sm: 'min-h-[36px] px-3 text-sm',
-  md: 'min-h-[44px] px-4 text-base',
-  lg: 'min-h-[52px] px-5 text-lg',
+  sm: 'min-h-[34px] px-3 text-xs',
+  md: 'min-h-[40px] px-3.5 text-sm',
+  lg: 'min-h-[46px] px-4 text-base',
 } as const;
 
 const Input = forwardRef<HTMLInputElement, InputProps>(
@@ -39,11 +39,11 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
     const id = externalId ?? generatedId;
 
     return (
-      <div className="space-y-1.5">
+      <div className="space-y-1">
         {label && (
           <label
             htmlFor={id}
-            className="block text-sm font-medium text-text-secondary"
+            className="block text-xs font-medium text-ink-600"
           >
             {label}
           </label>
@@ -54,12 +54,12 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
             ref={ref}
             id={id}
             className={clsx(
-              'w-full rounded-xl bg-bg-3 border transition-colors duration-200',
-              'text-text-primary placeholder:text-text-muted',
+              'w-full rounded-md bg-paper-100 border transition-colors duration-150',
+              'text-ink-900 placeholder:text-ink-400',
               'font-mono tabular-nums',
               error
-                ? 'border-error/50 focus:border-error'
-                : 'border-border-default focus:border-brand',
+                ? 'border-danger focus:border-danger'
+                : 'border-paper-200 focus:border-signal',
               sizeStyles[inputSize],
               tokenSymbol && 'pr-20',
               onMax && !tokenSymbol && 'pr-16',
@@ -78,14 +78,14 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
                 variant="ghost"
                 size="sm"
                 onClick={onMax}
-                className="!min-h-[28px] !px-2 text-xs font-bold text-brand hover:text-brand-hover"
+                className="!min-h-[26px] !px-1.5 text-[11px] font-bold text-signal hover:text-signal-hover !bg-paper-200/60"
                 aria-label="Fill maximum amount"
               >
                 MAX
               </Button>
             )}
             {tokenSymbol && (
-              <span className="text-sm font-medium text-text-muted select-none">
+              <span className="text-xs font-mono font-medium text-ink-600 select-none">
                 {tokenSymbol}
               </span>
             )}
@@ -93,12 +93,12 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
         </div>
 
         {error && (
-          <p id={`${id}-error`} className="text-xs text-error" role="alert">
+          <p id={`${id}-error`} className="text-xs text-danger" role="alert">
             {error}
           </p>
         )}
         {!error && helperText && (
-          <p id={`${id}-helper`} className="text-xs text-text-muted">
+          <p id={`${id}-helper`} className="text-[11px] text-ink-600">
             {helperText}
           </p>
         )}
