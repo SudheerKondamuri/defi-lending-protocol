@@ -25,15 +25,20 @@ export function useUserCollateral(
   userAddress: `0x${string}` | undefined,
   asset: `0x${string}` | undefined,
 ) {
-  return useReadContract({
+  const { data, ...rest } = useReadContract({
     ...lendingPoolConfig,
-    functionName: 'getUserCollateral',
+    functionName: 'userPositions',
     args: userAddress && asset ? [userAddress, asset] : undefined,
     query: {
       enabled: !!userAddress && !!asset,
       refetchInterval: 12_000,
     },
   });
+
+  return {
+    data: data ? (data as [bigint, bigint, bigint])[0] : undefined,
+    ...rest,
+  };
 }
 
 export function useUserBorrows(
@@ -42,7 +47,7 @@ export function useUserBorrows(
 ) {
   return useReadContract({
     ...lendingPoolConfig,
-    functionName: 'getUserBorrows',
+    functionName: 'getUserDebt',
     args: userAddress && asset ? [userAddress, asset] : undefined,
     query: {
       enabled: !!userAddress && !!asset,
