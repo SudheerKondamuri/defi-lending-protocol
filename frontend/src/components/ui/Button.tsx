@@ -15,19 +15,19 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 const variantStyles: Record<Variant, string> = {
   primary:
-    'bg-brand text-white hover:bg-brand-hover active:bg-brand-light shadow-lg shadow-brand/20',
+    'bg-signal text-white hover:bg-signal-hover active:bg-[#162B44] border border-signal',
   secondary:
-    'glass text-text-primary hover:bg-white/10 active:bg-white/15',
+    'bg-paper-100 text-ink-900 border border-paper-200 hover:bg-paper-200 active:bg-paper-300',
   danger:
-    'bg-error/15 text-error border border-error/30 hover:bg-error/25 active:bg-error/35',
+    'bg-danger/10 text-danger border border-danger/25 hover:bg-danger/15 active:bg-danger/20',
   ghost:
-    'text-text-secondary hover:text-text-primary hover:bg-white/5 active:bg-white/10',
+    'text-ink-600 hover:text-ink-900 hover:bg-paper-100 active:bg-paper-200',
 };
 
 const sizeStyles: Record<Size, string> = {
-  sm: 'min-h-[36px] px-3 text-sm gap-1.5 rounded-lg',
-  md: 'min-h-[44px] px-4 text-sm gap-2 rounded-xl',
-  lg: 'min-h-[52px] px-6 text-base gap-2.5 rounded-xl',
+  sm: 'min-h-[34px] px-3 text-xs gap-1.5 rounded-md font-medium',
+  md: 'min-h-[40px] px-4 text-xs gap-2 rounded-md font-semibold',
+  lg: 'min-h-[46px] px-5 text-sm gap-2.5 rounded-md font-semibold',
 };
 
 const Button = forwardRef<HTMLButtonElement, ButtonProps>(
@@ -37,13 +37,13 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     return (
       <motion.button
         ref={ref as any}
-        whileHover={isDisabled ? undefined : { scale: 1.02 }}
-        whileTap={isDisabled ? undefined : { scale: 0.98 }}
-        transition={{ duration: 0.15 }}
+        whileHover={isDisabled ? undefined : { scale: 1.01 }}
+        whileTap={isDisabled ? undefined : { scale: 0.99 }}
+        transition={{ duration: 0.1 }}
         className={clsx(
-          'inline-flex items-center justify-center font-medium cursor-pointer',
-          'transition-colors duration-200',
-          'disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none',
+          'inline-flex items-center justify-center cursor-pointer select-none',
+          'transition-colors duration-150',
+          'disabled:opacity-40 disabled:cursor-not-allowed disabled:pointer-events-none',
           variantStyles[variant],
           sizeStyles[size],
           className,
