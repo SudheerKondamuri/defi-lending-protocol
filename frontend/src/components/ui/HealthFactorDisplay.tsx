@@ -1,8 +1,7 @@
 import { useMemo } from 'react';
-import { motion } from 'framer-motion';
-import { Shield, AlertTriangle, XCircle } from 'lucide-react';
 import clsx from 'clsx';
 import { formatUnits } from 'viem';
+import { type HealthStatus, getHealthStatus } from '../../utils/healthFactor';
 
 interface HealthFactorDisplayProps {
   /** Raw health factor from contract (18 decimals bigint) or undefined if loading */
@@ -12,45 +11,33 @@ interface HealthFactorDisplayProps {
   className?: string;
 }
 
-type HealthStatus = 'safe' | 'warning' | 'critical' | 'unknown';
-
-function getHealthStatus(value: number): HealthStatus {
-  if (value >= 1.5) return 'safe';
-  if (value >= 1.0) return 'warning';
-  return 'critical';
-}
-
 const statusConfig: Record<
   HealthStatus,
-  { color: string; bgColor: string; icon: typeof Shield; label: string; barColor: string }
+  { color: string; label: string; strokeColor: string; description: string }
 > = {
   safe: {
-    color: 'text-success',
-    bgColor: 'bg-success/10',
-    icon: Shield,
-    label: 'Healthy',
-    barColor: 'bg-success',
+    color: 'text-safe',
+    strokeColor: '#3A6B4A',
+    label: 'Solvent & Safe',
+    description: 'Collateral position comfortably exceeds liquidation threshold (HF ≥ 1.50).',
   },
   warning: {
-    color: 'text-warning',
-    bgColor: 'bg-warning/10',
-    icon: AlertTriangle,
-    label: 'At Risk',
-    barColor: 'bg-warning',
+    color: 'text-caution',
+    strokeColor: '#B8860B',
+    label: 'Caution (Approaching Kink)',
+    description: 'Position is approaching liquidation risk (1.00 ≤ HF < 1.50). Consider adding collateral.',
   },
   critical: {
-    color: 'text-error',
-    bgColor: 'bg-error/10',
-    icon: XCircle,
+    color: 'text-danger',
+    strokeColor: '#A23B2E',
     label: 'Liquidation Risk',
-    barColor: 'bg-error',
+    description: 'Undercollateralized (HF < 1.00). Position is subject to immediate third-party liquidation.',
   },
   unknown: {
-    color: 'text-text-muted',
-    bgColor: 'bg-white/5',
-    icon: Shield,
-    label: 'No Position',
-    barColor: 'bg-text-muted',
+    color: 'text-ink-600',
+    strokeColor: '#9E988A',
+    label: 'No Active Loan',
+    description: 'No active debt liabilities recorded against collateral.',
   },
 };
 
@@ -66,7 +53,7 @@ export default function HealthFactorDisplay({
 
     // type(uint256).max indicates no borrows / infinite health
     if (healthFactor >= BigInt('115792089237316195423570985008687907853269984665640564039457584007913129639935')) {
-      return { displayValue: '∞', numericValue: 999, status: 'safe' as HealthStatus };
+      return { displayValue: '∞', numericValue: 3.5, status: 'safe' as HealthStatus };
     }
 
     const formatted = parseFloat(formatUnits(healthFactor, 18));
@@ -78,80 +65,147 @@ export default function HealthFactorDisplay({
   }, [healthFactor]);
 
   const config = statusConfig[status];
-  const Icon = config.icon;
-
-  // Gauge fill: maps health factor to 0-100% bar width (capped at HF=3)
-  const gaugePercent = Math.min(Math.max((numericValue / 3) * 100, 0), 100);
 
   if (compact) {
     return (
-      <span className={clsx('inline-flex items-center gap-1.5', config.color, className)}>
-        <Icon className="h-4 w-4" aria-hidden="true" />
-        <span className="font-mono font-bold tabular-nums">{displayValue}</span>
+      <span
+        className={clsx('inline-flex items-center gap-1.5 font-mono text-xs', config.color, className)}
+        aria-live="polite"
+        aria-atomic="true"
+      >
+        <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: config.strokeColor }} />
+        <span className="font-bold tabular-nums">HF: {displayValue}</span>
+        <span className="text-ink-600">[{config.label}]</span>
       </span>
     );
   }
 
+  // Dial Arc Calculations
+  // Semicircle from angle 180° to 360° (or -180° to 0°)
+  // Radius = 65, Center = (100, 80)
+  const radius = 60;
+  const cx = 100;
+  const cy = 75;
+
+  // Map HF (0 to 3.0) to angle across 180° arc: 0 -> -180°, 3.0 -> 0°
+  const clampedHF = Math.min(Math.max(numericValue, 0), 3.0);
+  const normalizedFraction = clampedHF / 3.0; // 0 to 1
+  const needleAngle = Math.PI - normalizedFraction * Math.PI; // from PI to 0
+  const needleX = cx + radius * Math.cos(needleAngle);
+  const needleY = cy - radius * Math.sin(needleAngle);
+
+  // Tick markers
+  // HF = 1.0 (Liquidation threshold) -> fraction = 1/3 (angle = 2PI/3)
+  const kink1X = cx + radius * Math.cos(Math.PI - (1 / 3) * Math.PI);
+  const kink1Y = cy - radius * Math.sin(Math.PI - (1 / 3) * Math.PI);
+  // HF = 1.5 (Safe threshold) -> fraction = 1.5/3 = 0.5 (angle = PI/2)
+  const kink2X = cx + radius * Math.cos(Math.PI - 0.5 * Math.PI);
+  const kink2Y = cy - radius * Math.sin(Math.PI - 0.5 * Math.PI);
+
   return (
-    <div className={clsx('space-y-3', className)}>
-      {/* Numeric display */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className={clsx('rounded-lg p-2', config.bgColor)}>
-            <Icon className={clsx('h-5 w-5', config.color)} aria-hidden="true" />
-          </div>
-          <div>
-            <p className="text-xs text-text-muted">Health Factor</p>
-            <p className={clsx('text-2xl font-bold font-mono tabular-nums', config.color)}>
+    <div
+      className={clsx('space-y-3', className)}
+      aria-live="polite"
+      aria-atomic="true"
+    >
+      <div className="flex flex-col items-center justify-center pt-2">
+        {/* The Hand-Instrument SVG Ink Dial */}
+        <div className="w-52 h-28 relative">
+          <svg viewBox="0 0 200 100" className="w-full h-full overflow-visible">
+            {/* Background Arc Track (Thin ink stroke) */}
+            <path
+              d="M 40 75 A 60 60 0 0 1 160 75"
+              fill="none"
+              stroke="#E4DFD1"
+              strokeWidth="2"
+              strokeLinecap="round"
+            />
+
+            {/* Danger Zone Segment: HF 0.0 to 1.0 (Angle: 180° to 120°) */}
+            <path
+              d={`M 40 75 A 60 60 0 0 1 ${kink1X} ${kink1Y}`}
+              fill="none"
+              stroke="#A23B2E"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+            />
+
+            {/* Caution Zone Segment: HF 1.0 to 1.5 (Angle: 120° to 90°) */}
+            <path
+              d={`M ${kink1X} ${kink1Y} A 60 60 0 0 1 ${kink2X} ${kink2Y}`}
+              fill="none"
+              stroke="#B8860B"
+              strokeWidth="2.5"
+            />
+
+            {/* Safe Zone Segment: HF 1.5 to 3.0 (Angle: 90° to 0°) */}
+            <path
+              d={`M ${kink2X} ${kink2Y} A 60 60 0 0 1 160 75`}
+              fill="none"
+              stroke="#3A6B4A"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+            />
+
+            {/* Threshold Ticks */}
+            <line x1={cx - 5} y1={cy - radius} x2={cx + 5} y2={cy - radius} stroke="#1B1A17" strokeWidth="1" />
+            <text x={cx} y={cy - radius - 6} fill="#6B6558" fontSize="7" textAnchor="middle" className="font-mono">
+              1.5 (SAFE)
+            </text>
+
+            <text x="35" y="90" fill="#A23B2E" fontSize="7" className="font-mono">
+              0.0 (RISK)
+            </text>
+            <text x="165" y="90" fill="#3A6B4A" fontSize="7" textAnchor="end" className="font-mono">
+              3.0+ (SOLVENT)
+            </text>
+
+            {/* Hand-drawn Needle Indicator */}
+            {status !== 'unknown' && (
+              <g>
+                <line
+                  x1={cx}
+                  y1={cy}
+                  x2={needleX}
+                  y2={needleY}
+                  stroke="#1B1A17"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                />
+                <circle cx={needleX} cy={needleY} r="3.5" fill={config.strokeColor} stroke="#F7F5EF" strokeWidth="1" />
+                <circle cx={cx} cy={cy} r="2.5" fill="#1B1A17" />
+              </g>
+            )}
+
+            {/* Value in Center */}
+            <text
+              x={cx}
+              y={cy - 12}
+              textAnchor="middle"
+              className="font-mono font-bold"
+              fill="#1B1A17"
+              fontSize="20"
+            >
               {displayValue}
-            </p>
-          </div>
+            </text>
+            <text
+              x={cx}
+              y={cy + 2}
+              textAnchor="middle"
+              className="font-mono uppercase"
+              fill={config.strokeColor}
+              fontSize="7.5"
+              fontWeight="600"
+            >
+              {config.label}
+            </text>
+          </svg>
         </div>
-        <span
-          className={clsx(
-            'rounded-full px-2.5 py-1 text-xs font-medium',
-            config.bgColor,
-            config.color,
-          )}
-        >
-          {config.label}
-        </span>
-      </div>
 
-      {/* Gauge bar */}
-      <div className="h-2 w-full rounded-full bg-bg-4 overflow-hidden" role="progressbar"
-        aria-valuenow={numericValue}
-        aria-valuemin={0}
-        aria-valuemax={3}
-        aria-label={`Health factor: ${displayValue}`}
-      >
-        <motion.div
-          className={clsx('h-full rounded-full', config.barColor)}
-          initial={{ width: 0 }}
-          animate={{ width: `${gaugePercent}%` }}
-          transition={{ duration: 0.8, ease: [0.25, 0.46, 0.45, 0.94] }}
-        />
+        <p className="text-[11px] text-ink-600 text-center max-w-xs mt-1 leading-relaxed">
+          {config.description}
+        </p>
       </div>
-
-      {/* Warning text */}
-      {status === 'warning' && (
-        <motion.p
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="text-xs text-warning"
-        >
-          Your position is approaching liquidation. Consider repaying some debt or adding collateral.
-        </motion.p>
-      )}
-      {status === 'critical' && (
-        <motion.p
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="text-xs text-error animate-pulse"
-        >
-          Critical: Your position can be liquidated. Repay debt immediately or add collateral.
-        </motion.p>
-      )}
     </div>
   );
 }
