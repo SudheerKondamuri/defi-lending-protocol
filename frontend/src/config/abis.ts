@@ -69,24 +69,28 @@ export const LENDING_POOL_ABI = [
     outputs: [{ name: 'healthFactor', type: 'uint256' }],
   },
   {
-    name: 'getUserCollateral',
+    name: 'userPositions',
     type: 'function',
     stateMutability: 'view',
     inputs: [
       { name: 'user', type: 'address' },
       { name: 'asset', type: 'address' },
     ],
-    outputs: [{ name: 'amount', type: 'uint256' }],
+    outputs: [
+      { name: 'collateralBalance', type: 'uint256' },
+      { name: 'borrowBalance', type: 'uint256' },
+      { name: 'borrowIndex', type: 'uint256' },
+    ],
   },
   {
-    name: 'getUserBorrows',
+    name: 'getUserDebt',
     type: 'function',
     stateMutability: 'view',
     inputs: [
       { name: 'user', type: 'address' },
       { name: 'asset', type: 'address' },
     ],
-    outputs: [{ name: 'amount', type: 'uint256' }],
+    outputs: [{ name: 'debt', type: 'uint256' }],
   },
   {
     name: 'getAssetData',
@@ -112,6 +116,33 @@ export const LENDING_POOL_ABI = [
       { name: 'availableBorrowValue', type: 'uint256' },
       { name: 'healthFactor', type: 'uint256' },
     ],
+  },
+  {
+    name: 'assetConfigs',
+    type: 'function',
+    stateMutability: 'view',
+    inputs: [{ name: 'asset', type: 'address' }],
+    outputs: [
+      { name: 'liquidationThreshold', type: 'uint256' },
+      { name: 'liquidationBonus', type: 'uint256' },
+      { name: 'reserveFactor', type: 'uint256' },
+      { name: 'decimals', type: 'uint8' },
+      { name: 'isActive', type: 'bool' },
+    ],
+  },
+  {
+    name: 'oracle',
+    type: 'function',
+    stateMutability: 'view',
+    inputs: [],
+    outputs: [{ name: '', type: 'address' }],
+  },
+  {
+    name: 'interestRateModel',
+    type: 'function',
+    stateMutability: 'view',
+    inputs: [],
+    outputs: [{ name: '', type: 'address' }],
   },
   {
     name: 'getSupportedAssets',
@@ -324,18 +355,18 @@ export const GOVERNOR_ABI = [
   },
 ] as const;
 
-/** Contract addresses — sourced from env or hardcoded defaults */
+/** Contract addresses — sourced from env or local Anvil defaults */
 export const CONTRACTS = {
   lendingPool: (import.meta.env.VITE_LENDING_POOL_ADDRESS ??
-    '0x0000000000000000000000000000000000000000') as `0x${string}`,
+    '0x8A791620dd6260079BF849Dc5567aDC3F2FdC318') as `0x${string}`,
   weth: (import.meta.env.VITE_WETH_ADDRESS ??
-    '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2') as `0x${string}`,
+    '0x5FbDB2315678afecb367f032d93F642f64180aa3') as `0x${string}`,
   usdc: (import.meta.env.VITE_USDC_ADDRESS ??
-    '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48') as `0x${string}`,
+    '0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512') as `0x${string}`,
   governor: (import.meta.env.VITE_GOVERNOR_ADDRESS ??
     '0x0000000000000000000000000000000000000001') as `0x${string}`,
   govToken: (import.meta.env.VITE_GOV_TOKEN_ADDRESS ??
     '0x0000000000000000000000000000000000000002') as `0x${string}`,
   oracle: (import.meta.env.VITE_ORACLE_ADDRESS ??
-    '0x0000000000000000000000000000000000000003') as `0x${string}`,
+    '0x5FC8d32690cc91D4c39d9d3abcBD16989F875707') as `0x${string}`,
 } as const;
