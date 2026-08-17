@@ -1,110 +1,196 @@
 @import 'tailwindcss';
 
-/* ── DeFi Lending Protocol — Dark Glassmorphism Design System ──────────── */
+/* ── Design System v4 — "The Ledger" (Warm Editorial, Light) ──────────── */
 
 @theme {
-  --color-brand: #8251EE;
-  --color-brand-hover: #9366F5;
-  --color-brand-light: #A37EF5;
-  --color-brand-subtle: rgba(130, 81, 238, 0.15);
+  --font-display: 'General Sans', system-ui, -apple-system, sans-serif;
+  --font-sans: 'General Sans', system-ui, -apple-system, sans-serif;
+  --font-mono: 'IBM Plex Mono', monospace;
 
-  --color-bg-1: hsl(240, 6%, 10%);
-  --color-bg-2: hsl(240, 5%, 12%);
-  --color-bg-3: hsl(240, 5%, 14%);
-  --color-bg-4: hsl(240, 4%, 18%);
-  --color-bg-5: hsl(240, 4%, 22%);
-  --color-bg-6: hsl(240, 4%, 26%);
+  /* Paper Surfaces */
+  --color-paper-50: #F7F5EF;
+  --color-paper-100: #EFEBE0;
+  --color-paper-200: #E4DFD1;
+  --color-paper-300: #D8D2C2;
 
-  --color-text-primary: #FFFFFF;
-  --color-text-secondary: #A1A1AA;
-  --color-text-muted: #71717A;
+  /* Ink Hierarchy */
+  --color-ink-900: #1B1A17;
+  --color-ink-600: #6B6558;
+  --color-ink-400: #9E988A;
 
-  --color-border-subtle: hsla(0, 0%, 100%, 0.08);
-  --color-border-default: hsla(0, 0%, 100%, 0.12);
-  --color-border-strong: hsla(0, 0%, 100%, 0.20);
+  /* The Signal Accent — "Ledger Ink" Navy */
+  --color-signal: #1F3B5C;
+  --color-signal-hover: #2B4F78;
+  --color-signal-subtle: rgba(31, 59, 92, 0.08);
 
-  --color-success: #10B981;
-  --color-warning: #F59E0B;
-  --color-error: #EF4444;
-  --color-info: #3B82F6;
+  /* Brand Aliases */
+  --color-brand: #1F3B5C;
+  --color-brand-hover: #2B4F78;
+  --color-brand-light: #4A6FA5;
+  --color-brand-subtle: rgba(31, 59, 92, 0.08);
+
+  /* Background & Surface Aliases */
+  --color-bg-1: #F7F5EF;
+  --color-bg-2: #EFEBE0;
+  --color-bg-3: #E4DFD1;
+  --color-bg-4: #D8D2C2;
+  --color-bg-5: #CCC5B4;
+
+  /* Text Aliases */
+  --color-text-primary: #1B1A17;
+  --color-text-secondary: #6B6558;
+  --color-text-muted: #9E988A;
+
+  /* Border Aliases */
+  --color-border-subtle: #E4DFD1;
+  --color-border-default: #D8D2C2;
+  --color-border-strong: #CCC5B4;
+
+  /* Muted Stamp-Colored Risk Scale */
+  --color-safe: #3A6B4A;
+  --color-caution: #B8860B;
+  --color-danger: #A23B2E;
+  --color-info: #4A6FA5;
+
+  --color-success: #3A6B4A;
+  --color-warning: #B8860B;
+  --color-error: #A23B2E;
 }
 
 /* ── Base Styles ───────────────────────────────────────────────────────── */
 
 html {
-  color-scheme: dark;
+  color-scheme: light;
 }
 
 body {
-  background: var(--color-bg-1);
-  color: var(--color-text-primary);
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background: var(--color-paper-50);
+  color: var(--color-ink-900);
+  font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   min-height: 100vh;
+}
+
+h1, h2, h3, .font-display {
+  font-family: var(--font-display);
+  font-weight: 600;
+  color: var(--color-ink-900);
+  letter-spacing: -0.02em;
+}
+
+code, pre, .font-mono, [data-tabular] {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
 }
 
 /* ── Focus Visible ─────────────────────────────────────────────────────── */
 
 *:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 2px var(--color-brand), 0 0 0 4px var(--color-bg-1);
+  box-shadow: 0 0 0 2px var(--color-signal), 0 0 0 4px var(--color-paper-50);
   border-radius: 0.375rem;
 }
 
 /* ── Scrollbar ─────────────────────────────────────────────────────────── */
 
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--color-bg-2);
+  background: var(--color-paper-50);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--color-bg-5);
-  border-radius: 9999px;
+  background: var(--color-paper-200);
+  border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--color-bg-6);
+  background: var(--color-paper-300);
 }
 
-/* ── Glass Utility Classes ─────────────────────────────────────────────── */
+/* ── Paper Surfaces & Ledger Utilities ─────────────────────────────────── */
 
 @layer components {
+  /* Standard paper panel without shadow */
+  .paper-card {
+    background: var(--color-paper-100);
+    border: 1px solid var(--color-paper-200);
+    border-radius: 0.5rem;
+  }
+
+  .paper-card-hover {
+    background: var(--color-paper-100);
+    border: 1px solid var(--color-paper-200);
+    border-radius: 0.5rem;
+    transition: border-color 150ms ease, background-color 150ms ease;
+  }
+
+  .paper-card-hover:hover {
+    border-color: var(--color-paper-300);
+    background: #EAE5D8;
+  }
+
+  /* The SINGLE permitted soft shadow on the interactive action panel */
+  .action-panel {
+    background: var(--color-paper-100);
+    border: 1px solid var(--color-paper-200);
+    border-radius: 0.5rem;
+    box-shadow: 0 4px 20px -2px rgba(27, 26, 23, 0.07);
+  }
+
+  /* Dotted leader pattern between label and value */
+  .ledger-leader {
+    flex: 1 1 auto;
+    border-bottom: 1px dotted var(--color-ink-400);
+    margin: 0 0.75rem 0.35rem 0.75rem;
+    min-width: 1rem;
+    opacity: 0.5;
+  }
+
+  /* Backward compatible classes cleanly mapped to flat paper surfaces */
   .glass {
-    backdrop-filter: blur(12px);
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: var(--color-paper-100);
+    border: 1px solid var(--color-paper-200);
   }
 
   .glass-card {
-    backdrop-filter: blur(12px);
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 1rem;
+    background: var(--color-paper-100);
+    border: 1px solid var(--color-paper-200);
+    border-radius: 0.5rem;
   }
 
   .glass-panel {
-    backdrop-filter: blur(16px);
-    background: rgba(0, 0, 0, 0.4);
-    border: 1px solid rgba(255, 255, 255, 0.05);
+    background: var(--color-paper-50);
+    border-bottom: 1px solid var(--color-paper-200);
   }
 
   .glass-card-hover {
-    backdrop-filter: blur(12px);
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 1rem;
-    transition: border-color 200ms ease, box-shadow 200ms ease;
+    background: var(--color-paper-100);
+    border: 1px solid var(--color-paper-200);
+    border-radius: 0.5rem;
+    transition: border-color 150ms ease, background-color 150ms ease;
   }
 
   .glass-card-hover:hover {
-    border-color: rgba(130, 81, 238, 0.4);
-    box-shadow: 0 0 20px rgba(130, 81, 238, 0.08);
+    border-color: var(--color-paper-300);
+    background: #EAE5D8;
+  }
+
+  .terminal-panel {
+    background: var(--color-paper-100);
+    border: 1px solid var(--color-paper-200);
+    border-radius: 0.5rem;
+  }
+
+  .terminal-panel-interactive {
+    background: var(--color-paper-100);
+    border: 1px solid var(--color-paper-200);
+    border-radius: 0.5rem;
+    transition: border-color 150ms ease;
   }
 }
 
