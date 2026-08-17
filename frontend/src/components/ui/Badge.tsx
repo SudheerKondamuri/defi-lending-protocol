@@ -12,27 +12,27 @@ interface BadgeProps {
 }
 
 const variantStyles: Record<BadgeVariant, string> = {
-  success: 'bg-success/15 text-success border-success/30',
-  warning: 'bg-warning/15 text-warning border-warning/30',
-  error: 'bg-error/15 text-error border-error/30',
-  info: 'bg-info/15 text-info border-info/30',
-  neutral: 'bg-white/10 text-text-secondary border-white/10',
+  success: 'bg-safe/10 text-safe border-safe/25',
+  warning: 'bg-caution/10 text-caution border-caution/25',
+  error: 'bg-danger/10 text-danger border-danger/25',
+  info: 'bg-info/10 text-info border-info/25',
+  neutral: 'bg-paper-100 text-ink-600 border-paper-200',
 };
 
 const dotStyles: Record<BadgeVariant, string> = {
-  success: 'bg-success',
-  warning: 'bg-warning',
-  error: 'bg-error',
+  success: 'bg-safe',
+  warning: 'bg-caution',
+  error: 'bg-danger',
   info: 'bg-info',
-  neutral: 'bg-text-muted',
+  neutral: 'bg-ink-600',
 };
 
 export default function Badge({ variant = 'neutral', children, className, dot }: BadgeProps) {
   return (
     <span
       className={clsx(
-        'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5',
-        'text-xs font-medium',
+        'inline-flex items-center gap-1 rounded border px-2 py-0.5',
+        'text-[11px] font-mono font-medium',
         variantStyles[variant],
         className,
       )}
