@@ -3,10 +3,20 @@ import Card from './Card';
 import Input from './Input';
 import Button from './Button';
 
-export default function YieldCalculator() {
-  const [deposit, setDeposit] = useState('1000');
-  const [apy, setApy] = useState('8.5');
-  const [years, setYears] = useState('5');
+interface YieldCalculatorProps {
+  defaultDeposit?: string;
+  defaultApy?: string;
+  defaultYears?: string;
+}
+
+export default function YieldCalculator({
+  defaultDeposit = '1000',
+  defaultApy = '5.0',
+  defaultYears = '5',
+}: YieldCalculatorProps = {}) {
+  const [deposit, setDeposit] = useState(defaultDeposit);
+  const [apy, setApy] = useState(defaultApy);
+  const [years, setYears] = useState(defaultYears);
 
   const projections = useMemo(() => {
     const p = parseFloat(deposit) || 0;
@@ -34,34 +44,14 @@ export default function YieldCalculator() {
   const activeW = width - padding * 2;
   const activeH = height - padding * 2;
 
-  const points = useMemo(() => {
-    const list = projections.list;
-    if (list.length === 0) return '';
-    const maxVal = projections.finalAmount || 1;
-    const minVal = parseFloat(deposit) || 0;
-    const range = maxVal - minVal || 1;
-
-    const coords = list.map((item, idx) => {
-      const x = padding + (idx / (list.length - 1)) * activeW;
-      const pct = (item.amount - minVal) / range;
-      const y = padding + activeH - pct * activeH;
-      return { x, y };
-    });
-
-    const startX = padding;
-    const startY = padding + activeH;
-    const linePath = coords.map((c, i) => `${i === 0 ? 'M' : 'L'} ${c.x} ${c.y}`).join(' ');
-    return `${linePath} L ${coords[coords.length - 1].x} ${startY} L ${startX} ${startY} Z`;
-  }, [projections, deposit, activeW, activeH]);
-
   return (
-    <Card className="glass-card flex flex-col md:flex-row gap-6 p-6">
+    <Card className="flex flex-col md:flex-row gap-6 p-6">
       {/* Inputs */}
       <div className="flex-1 space-y-4">
         <div>
-          <h3 className="text-lg font-bold text-text-primary">Yield Projection</h3>
-          <p className="text-xs text-text-secondary mt-0.5">
-            Estimate your future compound interest returns.
+          <h3 className="text-base font-semibold text-ink-900">Yield Projection</h3>
+          <p className="text-xs text-ink-600 mt-0.5">
+            Estimate your future compound interest returns over time.
           </p>
         </div>
 
@@ -81,14 +71,14 @@ export default function YieldCalculator() {
             step="0.1"
             placeholder="e.g. 8.5"
           />
-          <div className="flex gap-2">
+          <div className="flex gap-2 pt-1">
             {[1, 3, 5, 10].map((y) => (
               <Button
                 key={y}
                 variant={years === String(y) ? 'primary' : 'secondary'}
                 size="sm"
                 onClick={() => setYears(String(y))}
-                className="flex-1 min-h-[36px]"
+                className="flex-1"
               >
                 {y} Yr{y > 1 ? 's' : ''}
               </Button>
@@ -98,20 +88,20 @@ export default function YieldCalculator() {
       </div>
 
       {/* SVG projection graph & metrics */}
-      <div className="flex-1 flex flex-col justify-between bg-bg-3/40 rounded-xl p-4 border border-border-subtle">
+      <div className="flex-1 flex flex-col justify-between bg-paper-50 rounded-md p-4 border border-paper-200">
         <div className="space-y-1">
-          <span className="text-[10px] text-text-muted uppercase font-semibold tracking-wider">
+          <span className="text-[10px] text-ink-600 uppercase font-mono tracking-wider font-semibold">
             Projected Portfolio Value
           </span>
           <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-black text-white font-mono">
+            <span className="text-2xl font-bold text-ink-900 font-mono">
               ${projections.finalAmount.toLocaleString(undefined, {
                 minimumFractionDigits: 2,
                 maximumFractionDigits: 2,
               })}
             </span>
           </div>
-          <span className="text-xs text-success font-semibold flex items-center gap-1 mt-0.5">
+          <span className="text-xs text-safe font-mono font-medium flex items-center gap-1 mt-0.5">
             +${projections.interestEarned.toLocaleString(undefined, {
               minimumFractionDigits: 2,
               maximumFractionDigits: 2,
@@ -120,19 +110,11 @@ export default function YieldCalculator() {
           </span>
         </div>
 
-        {/* Small SVG curve preview */}
-        <div className="mt-4 h-24 relative overflow-visible">
+        {/* Ink-line SVG curve preview */}
+        <div className="mt-4 h-20 relative overflow-visible">
           <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full overflow-visible">
-            <defs>
-              <linearGradient id="calcGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="var(--color-brand)" stopOpacity={0.3} />
-                <stop offset="100%" stopColor="var(--color-brand)" stopOpacity={0.0} />
-              </linearGradient>
-            </defs>
-
-            {points && (
-              <path d={points} fill="url(#calcGrad)" />
-            )}
+            {/* Gridlines */}
+            <line x1={padding} y1={padding + activeH} x2={width - padding} y2={padding + activeH} stroke="#E4DFD1" strokeWidth="1" />
 
             {projections.list.length > 0 && (
               <path
@@ -147,8 +129,9 @@ export default function YieldCalculator() {
                   })
                   .join(' ')}
                 fill="none"
-                stroke="var(--color-brand)"
-                strokeWidth="2"
+                stroke="#1F3B5C"
+                strokeWidth="1.5"
+                strokeLinecap="round"
               />
             )}
           </svg>
