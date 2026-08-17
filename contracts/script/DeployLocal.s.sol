@@ -49,9 +49,9 @@ contract DeployLocal is Script {
         PriceOracleRegistry oracleRegistry = new PriceOracleRegistry(deployer);
         console.log("PriceOracleRegistry deployed at:", address(oracleRegistry));
 
-        // Set feeds
-        oracleRegistry.setPriceFeed(address(weth), address(ethFeed), 3600);
-        oracleRegistry.setPriceFeed(address(usdc), address(usdcFeed), 3600);
+        // Set feeds with generous heartbeat for local testing
+        oracleRegistry.setPriceFeed(address(weth), address(ethFeed), 31536000);
+        oracleRegistry.setPriceFeed(address(usdc), address(usdcFeed), 31536000);
 
         // 5. Deploy Lending Pool
         LendingPool implementation = new LendingPool();
@@ -84,7 +84,17 @@ contract DeployLocal is Script {
             })
         );
 
-        // Mint some mock tokens to standard test account (Alice) for testing
+        // 7. Seed initial pool liquidity from deployer so borrowing has liquidity ready
+        weth.mint(deployer, 50e18);
+        weth.approve(address(pool), 50e18);
+        pool.deposit(address(weth), 50e18);
+
+        usdc.mint(deployer, 100_000e6);
+        usdc.approve(address(pool), 100_000e6);
+        pool.deposit(address(usdc), 100_000e6);
+        console.log("Seeded initial pool liquidity (50 WETH, 100,000 USDC)");
+
+        // Mint mock tokens to standard test account (Alice) for testing
         // Alice on Anvil is: 0x70997970C51812dc3A010C7d01b50e0d17dc79C8
         address alice = 0x70997970C51812dc3A010C7d01b50e0d17dc79C8;
         weth.mint(alice, 100e18);
