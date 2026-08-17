@@ -364,9 +364,9 @@ export const CONTRACTS = {
   usdc: (import.meta.env.VITE_USDC_ADDRESS ??
     '0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512') as `0x${string}`,
   governor: (import.meta.env.VITE_GOVERNOR_ADDRESS ??
-    '0x2279B7A0a67E141187765867470a739851b68447') as `0x${string}`,
+    '0x3Aa5ebB10DC797CAC828524e59A333d0A371443c') as `0x${string}`,
   govToken: (import.meta.env.VITE_GOV_TOKEN_ADDRESS ??
-    '0xa513E6E4b8f2a923D98304ec87F64353C4D5C853') as `0x${string}`,
+    '0x68B1D87F95878fE05B998F19b66F4baba5De1aed') as `0x${string}`,
   oracle: (import.meta.env.VITE_ORACLE_ADDRESS ??
     '0x5FC8d32690cc91D4c39d9d3abcBD16989F875707') as `0x${string}`,
 } as const;
